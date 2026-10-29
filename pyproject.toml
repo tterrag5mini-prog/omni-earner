@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-earner"
+version = "0.1.0"
+description = "Dual-Vector Autonomous Agent: Active Outbound Bounty Hunter and Passive Inbound x402 Micro-Oracle"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "DeepMind Agentic Engineering", email = "agent@omniearner.local" }
+]
+dependencies = [
+    "pydantic>=2.0",
+    "httpx>=0.25.0",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.scripts]
+omni-earner = "omni_earner.orchestrator:main"
+
+[tool.setuptools.packages.find]
+include = ["omni_earner*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+python_files = ["test_*.py"]

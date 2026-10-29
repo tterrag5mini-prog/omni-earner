@@ -1,0 +1,13 @@
+diff --git a/calc.py b/calc.py
+index 003793f..2fe7e39 100644
+--- a/calc.py
++++ b/calc.py
+@@ -1,5 +1,7 @@
+ """Calculation utilities."""
+ 
+ def calculate_average(numbers: list[float]) -> float:
+-    """Calculate the arithmetic mean of a list of numbers."""
++    """Calculate the arithmetic mean of a list of numbers safely."""
++    if not numbers:
++        return 0.0
+     return sum(numbers) / len(numbers)
