@@ -24,6 +24,9 @@ __all__ = [
     "IsolatedSandbox",
     "X402OracleService",
     "Orchestrator",
+    "AutonomousEarnerWorker",
+    "create_server",
+    "run_server",
 ]
 
 
@@ -32,4 +35,12 @@ def __getattr__(name: str) -> Any:
         from omni_earner.orchestrator import Orchestrator
 
         return Orchestrator
+    if name in ("create_server", "run_server"):
+        from omni_earner.server import create_server, run_server
+
+        return create_server if name == "create_server" else run_server
+    if name == "AutonomousEarnerWorker":
+        from omni_earner.worker import AutonomousEarnerWorker
+
+        return AutonomousEarnerWorker
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

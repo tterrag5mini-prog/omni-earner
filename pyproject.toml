@@ -20,6 +20,8 @@ dependencies = [
 
 [project.scripts]
 omni-earner = "omni_earner.orchestrator:main"
+omni-oracle = "omni_earner.server:run_server"
+omni-worker = "omni_earner.worker:main"
 
 [tool.setuptools.packages.find]
 include = ["omni_earner*"]

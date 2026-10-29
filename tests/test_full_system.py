@@ -435,3 +435,74 @@ def test_orchestrator_auto_verify_pipeline() -> None:
         assert summary["total_gross_revenue"] > 200.0  # 200.0 bounty + 0.05 oracle
         assert summary["total_swept_to_owner"] > 140.0  # 70% of gross
         assert summary["current_balance"] > 25.0  # Net profit retained
+
+
+
+# ==============================================================================
+# 8. LIVE HTTP SERVER & AUTONOMOUS EARNER WORKER TESTS
+# ==============================================================================
+
+
+import threading
+from omni_earner.server import create_server
+from omni_earner.worker import AutonomousEarnerWorker
+
+
+def test_live_http_server_endpoints() -> None:
+    """Verify live HTTP server responds with 402, 200, and health telemetry."""
+    with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
+        ledger = TreasuryLedger(db_path=tmp.name, starting_balance=25.0)
+        # Port 0 lets OS allocate an available port
+        server = create_server(host="127.0.0.1", port=0, ledger=ledger)
+        port = server.server_port
+
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+
+        base_url = f"http://127.0.0.1:{port}"
+
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                # 1. Health endpoint
+                health_resp = client.get(f"{base_url}/health")
+                assert health_resp.status_code == 200
+                assert health_resp.json()["status"] == "healthy"
+
+                # 2. Unauthenticated oracle endpoint -> 402
+                req_402 = client.get(f"{base_url}/alpha/bounties")
+                assert req_402.status_code == 402
+                assert req_402.headers["payment-required"] == "x402/1.0"
+                assert req_402.json()["network"] == "eip155:8453"
+
+                # 3. Authenticated oracle endpoint -> 200
+                req_200 = client.get(
+                    f"{base_url}/alpha/bounties",
+                    headers={"X-PAYMENT": "x402-sig-valid-usdc-live-receipt"},
+                )
+                assert req_200.status_code == 200
+                assert req_200.headers["x-payment-response"] == "settled:eip155:8453"
+                assert "data" in req_200.json()
+
+                # 4. Ledger endpoint
+                ledger_resp = client.get(f"{base_url}/ledger")
+                assert ledger_resp.status_code == 200
+                assert ledger_resp.json()["total_gross_revenue"] == 0.05
+        finally:
+            server.shutdown()
+            server.server_close()
+
+
+def test_autonomous_earner_worker_achieves_dollar_goal() -> None:
+    """Verify the AutonomousEarnerWorker fulfills the $1.00 net and gross revenue goal."""
+    with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
+        ledger = TreasuryLedger(db_path=tmp.name, starting_balance=25.0)
+        worker = AutonomousEarnerWorker(target_usd=1.00, ledger=ledger)
+
+        result = worker.execute_until_goal(require_net_profit=True)
+
+        assert result["goal_fulfilled"] is True
+        assert result["target_usd"] == 1.00
+        assert result["earned_net_profit_usd"] >= 1.00
+        assert result["earned_gross_usd"] >= 1.00
+        assert result["owner_swept_usd"] == round(result["earned_gross_usd"] * 0.70, 4)
+        assert result["final_operational_balance"] > 25.0
